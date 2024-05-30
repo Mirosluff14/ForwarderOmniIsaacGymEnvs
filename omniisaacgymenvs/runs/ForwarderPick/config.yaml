@@ -1,6 +1,6 @@
 task_name: ${task.name}
 experiment: ''
-num_envs: 512
+num_envs: 4096
 seed: 42
 torch_deterministic: false
 max_iterations: ''
@@ -12,10 +12,10 @@ rl_device: cuda:0
 multi_gpu: false
 num_threads: 4
 solver_type: 1
-test: true
-checkpoint: /home/rl/ForwarderOmniIsaacGymEnvs/omniisaacgymenvs/runs/FWD2/nn/FWD2.pth
+test: false
+checkpoint: ''
 evaluation: false
-headless: false
+headless: true
 enable_livestream: false
 mt_timeout: 300
 enable_recording: false
@@ -46,13 +46,13 @@ task:
     fwdDofNoise: 0.25
     aggregateMode: 3
     actionScale:
-    - 4
+    - 6
     - 7
-    - 10
-    - 16
-    - 41
-    - 21
-    - 21
+    - 9
+    - 27
+    - 9
+    - 64
+    - 64
     woodLiftScale: 3.5
     grappleToWoodDistScale: 10
     woodToUnloadingPointDistScale: 100
@@ -184,18 +184,18 @@ train:
       schedule_type: standard
       kl_threshold: 0.008
       score_to_win: 10000000000.0
-      max_epochs: ${resolve_default:10000,${....max_iterations}}
-      save_best_after: 200
+      max_epochs: ${resolve_default:5000,${....max_iterations}}
+      save_best_after: 10
       save_frequency: 100
       print_stats: true
       grad_norm: 1.0
       entropy_coef: 0.001
       truncate_grads: true
       e_clip: 0.2
-      horizon_length: 32
+      horizon_length: 128
       minibatch_size: 8192
       mini_epochs: 8
-      critic_coef: 2
+      critic_coef: 3
       clip_value: true
       seq_len: 4
       bounds_loss_coef: 0.0001

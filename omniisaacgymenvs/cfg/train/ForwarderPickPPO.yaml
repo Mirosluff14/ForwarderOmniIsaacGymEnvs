@@ -22,7 +22,7 @@ params:
         fixed_sigma: True
     mlp:
       #units: [512, 128, 64]
-      units: [256,256, 128]
+      units: [256, 256, 128]
       #units: [512,256,128]
       activation: elu #tanh 
       d2rl: False
@@ -63,18 +63,18 @@ params:
     schedule_type: standard
     kl_threshold:  0.008         #0.008
     score_to_win: 1e10
-    max_epochs: ${resolve_default:10000,${....max_iterations}}
-    save_best_after: 200
+    max_epochs: ${resolve_default:5000,${....max_iterations}}
+    save_best_after: 10
     save_frequency: 100
     print_stats: True
     grad_norm: 1.0
     entropy_coef: 0.001 #0.0 # 1e-6 #0.0 # 1e-6 #0.00001 #0.0 #  # 0.0000001 # # # #
     truncate_grads:  True
     e_clip: 0.2
-    horizon_length: 32           #32 #16   #64
+    horizon_length: 128       #32 #16   #64
     minibatch_size: 8192          #8192 #32768 # 16384 
     mini_epochs: 8
-    critic_coef: 2
+    critic_coef: 3
     clip_value: True
     seq_len: 4
     bounds_loss_coef: 0.0001

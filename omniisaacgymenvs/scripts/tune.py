@@ -5,12 +5,12 @@ import tensorflow as tf
 import numpy as np
 
 
-path_to_file = '/home/rl/ForwarderOmniIsaacGymEnvs/omniisaacgymenvs/scripts/rlgames_train.py'
+path_to_file = 'C:/Studies/Projects/ForwarderRL/ForwarderOmniIsaacGymEnvs/omniisaacgymenvs/scripts/rlgames_train.py'
 
 
 
-command_1 = 'alias PYTHON_PATH=~/.local/share/ov/pkg/isaac_sim-2023.1.1/python.sh'
-python_path = '/home/rl/.local/share/ov/pkg/isaac_sim-2023.1.1/python.sh'
+command_1 = 'doskey PYTHON_PATH="C:/Users/Miro/AppData/Local/ov/pkg/isaac_sim-2023.1.1/python.bat"'
+python_path = 'C:/Users/Miro/AppData/Local/ov/pkg/isaac_sim-2023.1.1/python.bat'
 
 n_trials=300
 
@@ -57,15 +57,15 @@ def objective(trial):
                                                                                                           )
     #task.env.max_epochs={} experiment={} , experiment_name, 2
     
-    command = '{} ; {} >/dev/null 2>&1'.format(command_1, command_2)
+    command = '{} ; {} '.format(command_1, command_2)
     #command = '{} ; {} '.format(command_1, command_2)
     
     #result = subprocess.run(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-    os.system(command=command)
-    #print(result)
+    result = os.system(command=command)
+    print(result)
     
-    path_to_log_folder = '/home/rl/ForwarderOmniIsaacGymEnvs/omniisaacgymenvs/runs/{}/summaries'.format(experiment_name)
-
+    path_to_log_folder = 'C:/Studies/Projects/ForwarderRL/ForwarderOmniIsaacGymEnvs/omniisaacgymenvs/runs/{}/summaries'.format(experiment_name)
+    #os.makedirs(path_to_log_folder, exist_ok=True)
     event_acc = EventAccumulator(path_to_log_folder)
     event_acc.Reload()
 

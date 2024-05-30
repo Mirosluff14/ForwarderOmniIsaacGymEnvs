@@ -94,7 +94,7 @@ class ForwarderPickTask(RLTask):
         self._num_observations = 56 #41#35
         self._num_actions = 6
         self.num_dof_fwd = 9 
-        self.dt = 1/60 #self._task_cfg["sim"]["dt"] #1/60
+        self.dt = self._task_cfg["sim"]["dt"] #1/60
        
         RLTask.__init__(self, name, env)
         return
@@ -351,8 +351,8 @@ class ForwarderPickTask(RLTask):
         #self.wood_sides = torch.cuda.FloatTensor(num_resets, 1).uniform_() > 0.5
         
         # Swith sides
-        #self.wood_sides[indices] = ~self.wood_sides[indices]
-        wood_pos[:,0] +=  torch.randint(-10, 0, (num_resets, 1), device=self._device).flatten()
+        self.wood_sides[indices] = ~self.wood_sides[indices]
+        wood_pos[:,0] += self.wood_sides[indices].flatten() * -9
 
         #print(self.fwd_dof_targets[indices].shape)
 
@@ -458,64 +458,21 @@ class ForwarderPickTask(RLTask):
                             )'''
         self.reset_idx(indices)
 
-    def calculate_distance_reward(self, obj1_pos, obj2_pos):        
-        dist = torch.norm(obj1_pos-obj2_pos, p=2, dim=-1).flatten()
-        return 1 / (1 + dist**2)
-
     def calculate_metrics(self) -> None:
 
 
+        # Let's start with a very simple reward function
         # Reward for getting grapple close to wood
-        '''
+
         # Get relative position of grapple and wood
-        to_wood = torch.abs(self.grapple_body_pos - self.wood_pos)
+        to_wood = self.grapple_body_pos - self.wood_pos
 
         # Get reward for getting grapple close to wood
-        dist_to_wood = torch.norm(to_wood, p=2, dim=-1).flatten()
-        reward = 1. / (1. + dist_to_wood**3)
-
-        # Get reward for grapple height
-        reward *= self.grapple_body_pos[:, 2]
-
-        # let's add a step penalty
-        reward -= 0.1
+        self.dist_to_wood = torch.norm(to_wood, p=2, dim=-1).flatten()
+        reward = 1 / (1 + self.dist_to_wood**2)
 
         # Update reward buffer
         self.rew_buf[:] = reward
-        '''
-
-        # Grapple body's X-axis vector
-        axis1 = tf_vector(self.grapple_body_ori, self.grapple_forward_axis)
-        # Wood Y-axis vector 
-        axis2 = tf_vector(self.wood_ori, self.wood_forward_axis)
-
-        # Alignment of wood and grapple axes
-        dot1 = torch.bmm(axis1.view(self.num_envs, 1, 3), axis2.view(self.num_envs, 3, 1)).squeeze(-1).squeeze(-1)  
-
-        #let's try the simplest reward possible, which is distance from the wood to the target and grapple to wood
-        # Get relative position of wood and target
-        #to_target = torch.abs(self.wood_pos - self.target_pos)
-        #reward = 1. / (1. + torch.norm(to_target, p=2, dim=-1)**2)
-
-
-
-
-        # Get reward for getting grapple close to wood
-        reward = self.calculate_distance_reward(self.grapple_body_pos, self.wood_pos)
-        # Add reward for aligning grapple with wood
-        #reward *= (1 + 0.01 * torch.abs(dot1) * 0.5)
-        # Get reward for getting wood high
-        reward *= (1 + self.wood_pos[:, 2] * 0.1)
-        
-        # If the wood is closer than 10cm to the target, give a bonus of 10
-        #reward += 10. * (torch.norm(to_target, p=2, dim=-1) < 0.05).float()
-
-
-        reward -= 0.1
-        # Update reward buffer
-        self.rew_buf[:] = reward
-        
-
 
     def is_done(self) -> None:
 
@@ -524,14 +481,19 @@ class ForwarderPickTask(RLTask):
 
         # Reset if:
         # On wrong side and more than 50 steps passed
-        #resets = torch.where((self.side_reward == 0)&(self.progress_buf > 50),ones,resets)
+        resets = torch.where((self.side_reward == 0)&(self.progress_buf > 50),ones,resets)
         # If wood was lifted for less 15 steps and half an episode passed
-        #resets = torch.where((self.wood_lift_count<15)&(self.progress_buf > self._max_episode_length/2),ones,resets)
+        resets = torch.where((self.wood_lift_count<15)&(self.progress_buf > self._max_episode_length/2),ones,resets)
         # If max steps reached for episode
         resets = torch.where(self.progress_buf >= self._max_episode_length, ones, resets)
         # Update reset buffer
         self.reset_buf[:] = resets
 
+
+
+    def calculate_distance_reward(self, obj1_pos, obj2_pos):        
+        dist = torch.norm(obj1_pos-obj2_pos, p=2, dim=-1).flatten()
+        return 1 / (1 + dist**2)
 
     def min_max_norm(self, value, min_val, max_val):
         return (value - min_val) / (max_val - min_val)
