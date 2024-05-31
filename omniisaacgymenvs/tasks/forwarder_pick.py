@@ -441,7 +441,7 @@ class ForwarderPickTask(RLTask):
 
         self.initial_wood_pos, self.initial_wood_rots = self._woods.get_world_poses(clone=False) 
 
-        self.wood_lifted = torch.zeros((self._num_envs))
+        self.wood_lifted = torch.ones((self._num_envs))
         self.wood_lift_count = torch.zeros_like(self.wood_lifted, device=self._device)
 
 
@@ -464,54 +464,38 @@ class ForwarderPickTask(RLTask):
 
     def calculate_metrics(self) -> None:
 
-
-        # Reward for getting grapple close to wood
-        '''
-        # Get relative position of grapple and wood
-        to_wood = torch.abs(self.grapple_body_pos - self.wood_pos)
+        target_position = self.target_pos
+        # change the z position of the target to be 1.25
+        target_position[:, 2] = 1.25 # this is a real height of the target where the log should be dropped
 
         # Get reward for getting grapple close to wood
-        dist_to_wood = torch.norm(to_wood, p=2, dim=-1).flatten()
-        reward = 1. / (1. + dist_to_wood**3)
+        wood_grappler_reward = self.calculate_distance_reward(self.grapple_body_pos, self.wood_pos)
 
-        # Get reward for grapple height
-        reward *= self.grapple_body_pos[:, 2]
+        # Get multiplier for getting grapple close to wood
+        close_to_wood = (wood_grappler_reward > 0.9).float()
 
-        # let's add a step penalty
-        reward -= 0.1
+        reward = wood_grappler_reward
 
-        # Update reward buffer
-        self.rew_buf[:] = reward
-        '''
+        # Add reward for lifting the wood
+        reward *= 1 + self.wood_pos[:, 2] * close_to_wood * 1e3
 
-        # Grapple body's X-axis vector
-        axis1 = tf_vector(self.grapple_body_ori, self.grapple_forward_axis)
-        # Wood Y-axis vector 
-        axis2 = tf_vector(self.wood_ori, self.wood_forward_axis)
+        # Set reward for getting close to the target by x-y distance
+        wood_drop_zone_reward = self.calculate_distance_reward(self.wood_pos[:, :2], target_position[:, :2])
 
-        # Alignment of wood and grapple axes
-        dot1 = torch.bmm(axis1.view(self.num_envs, 1, 3), axis2.view(self.num_envs, 3, 1)).squeeze(-1).squeeze(-1)  
-
-        #let's try the simplest reward possible, which is distance from the wood to the target and grapple to wood
-        # Get relative position of wood and target
-        #to_target = torch.abs(self.wood_pos - self.target_pos)
-        #reward = 1. / (1. + torch.norm(to_target, p=2, dim=-1)**2)
+        # Multiplier for getting close to the target
+        close_to_drop_zone = (wood_drop_zone_reward > 0.95).float()
 
 
+        # Add reward for getting close to the target by z distance
+        wood_target_reward =self.calculate_distance_reward(self.wood_pos[:, 2], target_position[:, 2])
+
+        # Add reward for getting close to the drop while having the wood in the grapple
+        reward *= 1 + wood_drop_zone_reward * close_to_drop_zone  *  1e5 * close_to_wood * wood_target_reward 
+
+        print('Reward: ', torch.mean(reward), 'Close to wood: ', torch.mean(close_to_wood), 'Close to drop-zone: ', torch.mean(close_to_drop_zone), 'Wood z pos: ', torch.mean(self.wood_pos[:, 2]))
 
 
-        # Get reward for getting grapple close to wood
-        reward = self.calculate_distance_reward(self.grapple_body_pos, self.wood_pos)
-        # Add reward for aligning grapple with wood
-        #reward *= (1 + 0.01 * torch.abs(dot1) * 0.5)
-        # Get reward for getting wood high
-        reward *= (1 + self.wood_pos[:, 2] * 0.1)
-        
-        # If the wood is closer than 10cm to the target, give a bonus of 10
-        #reward += 10. * (torch.norm(to_target, p=2, dim=-1) < 0.05).float()
-
-
-        reward -= 0.1
+        reward -= 0.001
         # Update reward buffer
         self.rew_buf[:] = reward
         
