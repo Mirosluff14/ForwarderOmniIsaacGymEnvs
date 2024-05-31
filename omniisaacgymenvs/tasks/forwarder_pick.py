@@ -476,7 +476,7 @@ class ForwarderPickTask(RLTask):
 
         reward = wood_grappler_reward
 
-        # Add reward for lifting the wood
+        # Add reward for lifting the wood#
         reward *= 1 + self.wood_pos[:, 2] * close_to_wood * 1e3
 
         # Set reward for getting close to the target by x-y distance
